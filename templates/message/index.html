@@ -1,0 +1,64 @@
+{% extends "message/base.html" %}
+
+{% block body_block %}
+
+<div class="container">
+    <div class="jumbotron">
+        <h1>Bulk Emails to Zoopla, Rightmove</h1>
+        {% if user.is_authenticated %}
+        <h2>User Name: {{ user.username }}</h2>
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <a href="media/sample/zoopla.csv" download>Download Zoopla Template</a><br>
+            <a href="media/sample/rightmove.csv" download>Download RightMove Template</a><br>
+            <input type="file" name="myfile">
+            <button type="submit" class="btn btn-outline-success">Upload</button>
+        </form>
+        {% if uploaded_file_url %}
+        <p>File uploaded at: <a href="{{ uploaded_file_url }}">{{ uploaded_file_url }}</a></p>
+        <a class="btn btn-outline-info" onclick="send('{{ uploaded_file_url }}')">Send</a>
+        {% endif %}
+        {% else %}
+        <h2>Register or Login if you'd like to</h2>
+        {% endif %}
+    </div>
+</div>
+{% block javascript %}
+<script type='text/javascript'>
+function send(str) {
+    alert(str);
+    var csrftoken = getCookie('csrftoken');
+    $.ajax({
+        url: '/message/send/',
+        type: "POST",
+        data: {csvpath: str, csrfmiddlewaretoken: csrftoken},
+        success: function (data_response) {
+            console.log(data_response);
+            window.open(window.location.href, '_self');
+        },
+        complete: function (data_response) {
+            console.log("update-end");
+        }
+    });
+}
+
+function getCookie(name) {
+    var cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        var cookies = document.cookie.split(';');
+        for (var i = 0; i < cookies.length; i++) {
+            var cookie = cookies[i].trim();
+            // Does this cookie string begin with the name we want?
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+
+</script>
+{% endblock javascript %}
+{% endblock %}
