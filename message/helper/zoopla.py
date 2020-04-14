@@ -31,7 +31,8 @@ class mailer_zoopla:
 
     def __send_email(self, driver, url, query):
         print(url)
-
+        driver.find_element_by_xpath("//div[@class='ui-cookie-consent-choose__buttons']/button[@data-responsibility='acceptAll']").click()
+        time.sleep(3)
         input = driver.find_element_by_name("name")
         input.send_keys(query["name"])
 
@@ -41,26 +42,49 @@ class mailer_zoopla:
         input = driver.find_element_by_name("phone")
         input.send_keys(query["phone"])
 
+        if query["company"] != "null":
+            driver.find_element_by_xpath("//input[@name='company_name']").send_keys(query["company"])
+
+        if query["sector"] != "null":
+            driver.find_element_by_xpath("//input[@name='business_sector']").send_keys(query["sector"])
+
+        if query["no."] != "null":
+            driver.find_element_by_xpath("//input[@name='number_of_employees']").send_keys(query["no."])
+
+        if query["date"] != "null":
+            driver.find_element_by_xpath("//input[@name='ideal_date_of_occupation']").send_keys(query["date"])
+
+
         try:
             input = driver.find_element_by_name("postcode")
             input.send_keys(query["postcode"])
         except NoSuchElementException:
             pass
 
-        driver.find_element_by_xpath("//select[@name='status']/option[text()='{}']".format(query["status"])).click()
+        try:
+            driver.find_element_by_xpath("//select[@name='status']/option[@value='{}']".format(query["status"])).click()
+            time.sleep(2)
+        except NoSuchElementException:
+            pass
 
         input = driver.find_element_by_name("message")
         input.send_keys(query["message"])
 
+        elems = driver.find_elements_by_class_name("ui-form__row")
+
+        if query["request_viewing"] == "TRUE":
+            elems[len(elems) - 3].click()
+
         if query["send_news"] == "TRUE":
-            driver.find_elements_by_class_name("ui-form__row")[7].click()
+            elems[len(elems) - 2].click()
 
         if query["send_offers"] == "TRUE":
-            driver.find_elements_by_class_name("ui-form__row")[8].click()
+            elems[len(elems) - 1].click()
 
         self.__pass_recaptcha(driver, url)
 
         driver.find_element_by_xpath("//input[@type='submit']").click()
+        time.sleep(5)
 
     def __pass_recaptcha(self, driver, url):
 
@@ -100,19 +124,32 @@ class mailer_zoopla:
         return input_driver
 
 
-url = "https://www.zoopla.co.uk/for-sale/contact/54293747?search_identifier=6acaf87b0785fe79a85ecb180152347a"
-query = {
-    "name": "Jamie Smith",
-    "email": "bluesky_butterfly@outlook.com",
-    "phone": "01234 56790",
-    "postcode": "AB1 2CD",
-    "status": "I have a property to let",
-    "message": "Hi, Agency! Could you please...?",
-    "request_viewing": True,
-    "send_news": True,
-    "send_offers": True
-}
-#with mailer_zoopla() as scraper:
-#    scraper.get_account(url, query)
-
-
+with open("sample/zoopla.csv") as f:
+    lis = [line.split(',') for line in f]
+    flag_header = 1
+    icnt = 0
+    for x in lis:
+        icnt = icnt + 1
+        if flag_header == 1:
+            flag_header = 0
+            continue
+        # if icnt != 6:
+        #     continue
+        url = x[0]
+        query = {
+            "name": x[1],
+            "email": x[2],
+            "phone": x[3],
+            "postcode": x[4],
+            "status": x[5],
+            "company": x[6],
+            "sector": x[7],
+            "no.": x[8],
+            "date": x[9],
+            "message": x[10],
+            "request_viewing": x[11],
+            "send_news": x[12],
+            "send_offers": x[13].replace('\n', '')
+        }
+        with mailer_zoopla() as scraper:
+            scraper.get_account(url, query)

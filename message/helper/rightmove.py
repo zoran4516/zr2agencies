@@ -36,7 +36,11 @@ class mailer_rightmove:
 
     def __send_email(self, driver, url, query):
         print(url)
-        driver.find_element_by_xpath("//select[@id='buyingPropertyEnquiry-title']/option[text()='{}']".format(query["title"])).click()
+
+        if query["view_property"] == "TRUE":
+            driver.find_element_by_xpath("//label[@for='viewProperty']").click()
+
+        driver.find_element_by_xpath("//select[@name='title']/option[text()='{}']".format(query["title"])).click()
 
         input = driver.find_element_by_name("firstName")
         input.send_keys(query["firstName"])
@@ -64,13 +68,33 @@ class mailer_rightmove:
 
         input = driver.find_element_by_name("address")
         input.send_keys(query["address"])
-        time.sleep(2)
-        driver.find_element_by_xpath("//select[@name='emailAnswerEnquirerType']/option[text()='{}']".format(query["emailAnswerEnquirerType"])).click()
-        time.sleep(2)
+        #time.sleep(2)
+
+        try:
+            driver.find_element_by_xpath("//select[@name='emailAnswerEnquirerType']/option[text()='{}']".format(query["emailAnswerEnquirerType"])).click()
+            #time.sleep(2)
+        except NoSuchElementException:
+            pass
+
+        try:
+            driver.find_element_by_xpath("//select[@name='emailAnswerSellSituationType']/option[text()='{}']".format(query["to_sell"])).click()
+            #time.sleep(2)
+        except NoSuchElementException:
+            pass
+
+        try:
+            driver.find_element_by_xpath("//select[@name='emailAnswerRentSituationType']/option[text()='{}']".format(query["to_let"])).click()
+            #time.sleep(2)
+        except NoSuchElementException:
+            pass
+
+        if query["request_valuation"] == "TRUE":
+            driver.find_element_by_xpath("//label[@for='requestValuation']").click()
+
         driver.find_element_by_xpath("//input[@type='submit']").click()
 
         self.__pass_recaptcha(driver, url)
-        time.sleep(2)
+        time.sleep(10)
 
     def __pass_recaptcha(self, driver, url):
 
@@ -78,23 +102,23 @@ class mailer_rightmove:
         captcha2 = driver.find_element_by_xpath("//div/div/iframe").get_attribute("src")
         captcha3 = captcha2.split('=')
         site_key = captcha3[2]
-        print(site_key)
+        #print(site_key)
         s = requests.Session()
 
         captcha_id = s.post(
             "http://2captcha.com/in.php?key={}&method=userrecaptcha&googlekey={}&pageurl={}".format(API_KEY, site_key,
                                                                                                     url)).text.split('|')[1]
-        print(captcha_id)
+        #print(captcha_id)
         recaptcha_answer = s.get("http://2captcha.com/res.php?key={}&action=get&id={}".format(API_KEY, captcha_id)).text
-        print(recaptcha_answer)
+        #print(recaptcha_answer)
         while 'CAPCHA_NOT_READY' in recaptcha_answer:
             time.sleep(5)
             recaptcha_answer = s.get("http://2captcha.com/res.php?key={}&action=get&id={}".format(API_KEY, captcha_id)).text
-            print(recaptcha_answer)
+            #print(recaptcha_answer)
 
         recaptcha_answer = recaptcha_answer.split('|')[1]
-        print(recaptcha_answer)
-        time.sleep(10)
+        #print(recaptcha_answer)
+        time.sleep(2)
 
         driver.execute_script("document.getElementById('g-recaptcha-response').innerHTML='" + recaptcha_answer + "';");
         driver.execute_script("onCaptchaSubmit();")
@@ -114,29 +138,36 @@ class mailer_rightmove:
         return input_driver
 
 
-url = "https://www.rightmove.co.uk/commercial-property-for-sale/contactBranch.html?propertyId=" \
-      "86731319&backListLink=%2Fcommercial-property-for-sale%2Ffind.html%3FsearchType%3DSALE%26" \
-      "locationIdentifier%3DREGION%255E91993%26insId%3D1%26radius%3D0.0%26displayPropertyType" \
-      "%3Dcommercial%26businessForSale%3D%26minBedrooms%3D%26maxBedrooms%3D%26minPrice%3D" \
-      "%26maxPrice%3D%26areaSizeUnit%3Dsqft%26minSize%3D%26maxSize%3D%26partBuyPartRent%3D%2" \
-      "6maxDaysSinceAdded%3D%26_includeSSTC%3Don%26sortByPriceDescending%3D%26primaryDisplay" \
-      "PropertyType%3D%26secondaryDisplayPropertyType%3D%26oldDisplayPropertyType%3D%26oldPr" \
-      "imaryDisplayPropertyType%3D%26newHome%3D%26auction%3Dfalse&backToPropertyURL=/commercia" \
-      "l-property-for-sale/property-86731319.html&fromButtonId=property-detail-button-rhs"
-query = {
-            "view_property": True,
-            "title": "Mrs",#['Mr', 'Mrs', 'Miss', 'Ms']
-            "firstName": "testA",
-            "lastName": "testB",
-            "comments": "Hi, Agency! Could you please...?",
-            "telephone": "01234 56790",
-            "email": "bluesky_butterfly@outlook.com",
-            "country_code": "GB",#['AF', 'AL', 'DZ', 'AS', 'AD', 'AO', ...]
-            "postcode": "AB1 2CD",
-            "address": "TEST Address",
-            "emailAnswerEnquirerType": "investor_developer"#['surveyor_agent', 'investor_developer' ,'tenant_buyer', 'other']
-        }
-#with mailer_rightmove() as scraper:
-#    scraper.get_account(url, query)
 
+with open("sample/rightmove.csv") as f:
+    lis = [line.split(',') for line in f]
+    flag_header = 1
+    icnt = 0
+    for x in lis:
+        icnt = icnt + 1
+        if flag_header == 1:
+            flag_header = 0
+            continue
+        # if icnt != 5:
+        #     continue
+        url = x[0]
+        query = {
+            "more_details": x[1],
+            "view_property": x[2],
+            "title": x[3],#['Mr', 'Mrs', 'Miss', 'Ms']
+            "firstName": x[4],
+            "lastName": x[5],
+            "comments": x[6],
+            "telephone": x[7],
+            "email": x[8],
+            "country_code": x[9],#['AF', 'AL', 'DZ', 'AS', 'AD', 'AO', ...]
+            "postcode": x[10],
+            "address": x[11],
+            "to_sell": x[12],
+            "to_let": x[13],
+            "request_valuation": x[14],
+            "emailAnswerEnquirerType": x[15]#['surveyor_agent', 'investor_developer' ,'tenant_buyer', 'other']
+        }
+        with mailer_rightmove() as scraper:
+            scraper.get_account(url, query)
 
